@@ -34,15 +34,13 @@ const settingStore = useSettingStore();
 const plTypeChoose = ref(0);
 const plTypeName = ["我创建的", "我收藏的"];
 
-// 歌单列表内容
+// 歌单列表内容（「我创建的」包含「我喜欢的音乐」）
 const listData = computed(() =>
-  dataStore.userLikeData.playlists
-    ?.filter((pl) =>
-      plTypeChoose.value === 0
-        ? pl.userId === dataStore.userData.userId
-        : pl?.userId !== dataStore.userData.userId,
-    )
-    .slice(plTypeChoose.value === 0 ? 1 : 0),
+  dataStore.userLikeData.playlists?.filter((pl) =>
+    plTypeChoose.value === 0
+      ? pl.userId === dataStore.userData.userId
+      : pl?.userId !== dataStore.userData.userId,
+  ),
 );
 
 // 更换歌单类型
