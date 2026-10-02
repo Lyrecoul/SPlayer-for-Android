@@ -275,6 +275,11 @@ const getPlaylistDetail = async (
   options: { getList: boolean; refresh: boolean } = { getList: true, refresh: false },
 ) => {
   if (!id) return;
+  // 我喜欢的音乐需携带 cookie 获取，统一交给专属页面处理
+  if (id === dataStore.likedPlaylistId) {
+    router.replace({ name: "like-songs" });
+    return;
+  }
   // 设置当前请求的歌单 ID，用于防止竞态条件
   currentRequestId.value = id;
   // 设置加载状态

@@ -162,6 +162,8 @@ export const useDataStore = defineStore("data", {
   getters: {
     // 是否为喜欢歌曲
     isLikeSong: (state) => (id: number) => state.userLikeData.songs.includes(id),
+    // 我喜欢的音乐歌单 ID（用户歌单首项）
+    likedPlaylistId: (state): number => Number(state.userLikeData.playlists?.[0]?.id) || 0,
   },
   actions: {
     /**

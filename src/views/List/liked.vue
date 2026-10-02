@@ -402,9 +402,9 @@ onMounted(async () => {
   }
 
   // 获取我喜欢的音乐歌单 ID
-  const likedPlaylistId = dataStore.userLikeData.playlists?.[0]?.id;
+  const likedPlaylistId = dataStore.likedPlaylistId;
   if (likedPlaylistId) {
-    loadPlaylistData(Number(likedPlaylistId));
+    loadPlaylistData(likedPlaylistId);
   } else {
     // 如果没有找到我喜欢的音乐歌单，尝试从缓存获取
     const data: any = await dataStore.getUserLikePlaylist();
