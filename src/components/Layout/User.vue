@@ -160,27 +160,31 @@ const userLikeData = computed(() => {
 
 // 检查登录状态
 const checkLoginStatus = async () => {
-  // 若为 UID 登录
-  if (dataStore.loginType === "uid") {
-    await updateSpecialUserData();
-    return;
-  }
-  // 获取登录状态
-  const loginState = await getLoginState();
-  // 登录正常
-  if (loginState.data?.profile && Object.keys(loginState.data?.profile)?.length) {
-    dataStore.userLoginStatus = true;
-    // 刷新登录
-    await refreshLoginData();
-    // 获取用户信息
-    await updateUserData();
-  }
-  // 若还有用户数据，则登录过期
-  else if (dataStore.userData.userId !== 0) {
-    dataStore.userLoginStatus = false;
-    dataStore.userData.userId = 0;
-    window.$message.warning("登录已过期，请重新登录", { duration: 2000 });
-    openUserLogin();
+  try {
+    // 若为 UID 登录
+    if (dataStore.loginType === "uid") {
+      await updateSpecialUserData();
+      return;
+    }
+    // 获取登录状态
+    const loginState = await getLoginState();
+    // 登录正常
+    if (loginState?.data?.profile && Object.keys(loginState.data.profile)?.length) {
+      dataStore.userLoginStatus = true;
+      // 刷新登录
+      await refreshLoginData();
+      // 获取用户信息
+      await updateUserData();
+    }
+    // 若还有用户数据，则登录过期
+    else if (dataStore.userData.userId !== 0) {
+      dataStore.userLoginStatus = false;
+      dataStore.userData.userId = 0;
+      window.$message.warning("登录已过期，请重新登录", { duration: 2000 });
+      openUserLogin();
+    }
+  } catch (error) {
+    console.warn("检查登录状态失败:", error);
   }
 };
 

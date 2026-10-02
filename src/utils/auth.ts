@@ -226,13 +226,16 @@ export const updateUserData = async () => {
     const dataStore = useDataStore();
     // userId
     const { profile } = await userAccount();
-    const userId = profile.userId;
-    // 获取用户信息
-    const [userDetailData, subcountData] = await Promise.all([userDetail(userId), userSubcount()]);
+    const userId = profile?.userId;
+    if (!userId) throw new Error("Missing user profile");
+    // 用户详情与订阅计数相互独立，单个接口失败不阻塞后续数据拉取
+    const [detailResult, subcountResult] = await Promise.allSettled([
+      userDetail(userId),
+      userSubcount(),
+    ]);
+    const userDetailData = detailResult.status === "fulfilled" ? detailResult.value : {};
+    const subcountData = subcountResult.status === "fulfilled" ? subcountResult.value : {};
     const userData = Object.assign(profile, userDetailData);
-
-    // 获取用户订阅信息
-    // 获取用户 VIP 信息
 
     // 更改用户信息
     dataStore.userData = {
@@ -252,7 +255,7 @@ export const updateUserData = async () => {
       subPlaylistCount: subcountData.subPlaylistCount,
       createdPlaylistCount: subcountData.createdPlaylistCount,
     };
-    // 获取用户喜欢数据
+    // 获取用户喜欢数据（互不阻塞，部分失败不影响其它类目）
     const allUserLikeResult = await Promise.allSettled([
       updateUserLikeSongs(),
       updateUserLikePlaylist(),
@@ -263,9 +266,12 @@ export const updateUserData = async () => {
       // 每日推荐
       updateDailySongsData(),
     ]);
-    // 若部分失败
-    const hasFailed = allUserLikeResult.some((result) => result.status === "rejected");
-    if (hasFailed) throw new Error("Failed to update some user data");
+    // 打印失败项便于排查，但不中断
+    allUserLikeResult.forEach((result, index) => {
+      if (result.status === "rejected") {
+        console.warn(`User like data #${index} failed:`, result.reason);
+      }
+    });
   } catch (error) {
     console.error("❌ Error updating user data:", error);
     throw error;
@@ -305,7 +311,7 @@ export const updateUserLikeSongs = async () => {
   const dataStore = useDataStore();
   if (!isLogin() || !dataStore.userData.userId) return;
   const result = await userLike(dataStore.userData.userId);
-  dataStore.setUserLikeData("songs", result.ids);
+  await dataStore.setUserLikeData("songs", result?.ids ?? []);
 };
 
 // 更新用户喜欢歌单
@@ -313,15 +319,12 @@ export const updateUserLikePlaylist = async () => {
   const dataStore = useDataStore();
   const userId = dataStore.userData.userId;
   if (!isLogin() || !userId) return;
-  if (dataStore.loginType === "uid") {
-    const result = await userPlaylist(30, 0, userId);
-    await dataStore.setUserLikeData("playlists", formatCoverList(result.playlist));
-    return;
-  }
-  // 计算数量
+  // 订阅计数不可用时用较大默认值，避免漏拉歌单
   const { createdPlaylistCount, subPlaylistCount } = dataStore.userData;
-  const number = (createdPlaylistCount || 0) + (subPlaylistCount || 0) || 50;
+  const total = (createdPlaylistCount || 0) + (subPlaylistCount || 0);
+  const number = total > 0 ? Math.min(total, 1000) : 1000;
   const result = await userPlaylist(number, 0, userId);
+  if (!result?.playlist) return;
   await dataStore.setUserLikeData("playlists", formatCoverList(result.playlist));
 };
 

@@ -2,6 +2,7 @@ import http, { IncomingMessage, ServerResponse } from "http";
 import https from "https";
 import { createRequire } from "module";
 import path from "path";
+import { handleUnblockRoute, isUnblockPath } from "./unblock";
 
 const DEFAULT_PORT = Number(process.env["SP_API_PORT"] || process.env["VITE_SERVER_PORT"] || 1145);
 const DEFAULT_HOST = process.env["SP_API_HOST"] || "127.0.0.1";
@@ -281,6 +282,31 @@ const handleNeteaseRoute = async (
   }
 };
 
+const handleUnblockRouteRequest = async (
+  pathname: string,
+  query: Record<string, string>,
+  request: IncomingMessage,
+  response: ServerResponse,
+) => {
+  const subPath = pathname.replace(/^\/api\/unblock\/?/, "");
+  if (!isUnblockPath(subPath)) {
+    sendJson(request, response, 404, { error: "API not found" });
+    return;
+  }
+
+  try {
+    const result = await handleUnblockRoute(subPath, query);
+    if (result === null) {
+      sendJson(request, response, 404, { error: "API not found" });
+      return;
+    }
+    sendJson(request, response, 200, result);
+  } catch (error) {
+    console.error("[embedded-api] Unblock request failed", subPath, error);
+    sendJson(request, response, 500, { error: "Internal Server Error" });
+  }
+};
+
 export const startEmbeddedApiServer = async () => {
   const server = http.createServer(async (request, response) => {
     setCorsHeaders(request, response);
@@ -311,8 +337,17 @@ export const startEmbeddedApiServer = async () => {
             name: "NeteaseCloudMusicApi",
             url: "/api/netease",
           },
+          {
+            name: "UnblockAPI",
+            url: "/api/unblock",
+          },
         ],
       });
+      return;
+    }
+
+    if (pathname === "/api/unblock" || pathname.startsWith("/api/unblock/")) {
+      await handleUnblockRouteRequest(pathname, query, request, response);
       return;
     }
 

@@ -6,7 +6,7 @@ import type { SettingState } from "../setting";
 /**
  * 当前设置 Schema 版本号
  */
-export const CURRENT_SETTING_SCHEMA_VERSION = 26;
+export const CURRENT_SETTING_SCHEMA_VERSION = 27;
 
 /**
  * 迁移函数类型
@@ -31,7 +31,6 @@ export const settingMigrations: Record<number, MigrationFunction> = {
     return {
       songUnlockServer: [
         { key: SongUnlockServer.BODIAN, enabled: true },
-        { key: SongUnlockServer.GEQUBAO, enabled: true },
         { key: SongUnlockServer.NETEASE, enabled: true },
         { key: SongUnlockServer.KUWO, enabled: false },
       ],
@@ -290,5 +289,13 @@ export const settingMigrations: Record<number, MigrationFunction> = {
   26: () => {
     // 保留已发布版本号，避免覆盖严格档位。
     return {};
+  },
+  27: (state) => {
+    // 移除已废弃的 gequbao 解锁源，清理老用户持久化设置中的残留
+    const servers = state.songUnlockServer;
+    if (!Array.isArray(servers)) return {};
+    return {
+      songUnlockServer: servers.filter((s) => (s.key as string) !== "gequbao"),
+    };
   },
 };

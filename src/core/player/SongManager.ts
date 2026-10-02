@@ -25,7 +25,6 @@ export enum SongUnlockServer {
   NETEASE = "netease",
   BODIAN = "bodian",
   KUWO = "kuwo",
-  GEQUBAO = "gequbao",
 }
 
 /** 歌曲播放地址信息 */
@@ -532,7 +531,10 @@ class SongManager {
       const songId = nextSong.type === "radio" ? nextSong.dj?.id : nextSong.id;
       if (!songId) return;
       // 是否可解锁
-      const canUnlock = isElectron && nextSong.type !== "radio" && settingStore.useSongUnlock;
+      const canUnlock =
+        (isElectron || isCapacitorAndroid) &&
+        nextSong.type !== "radio" &&
+        settingStore.useSongUnlock;
       // 先请求官方地址
       const { url: officialUrl, isTrial, quality } = await this.getOnlineUrl(songId, false);
       if (token !== this.prefetchToken) return;
@@ -662,7 +664,8 @@ class SongManager {
     // 在线获取
     try {
       // 是否可解锁
-      const canUnlock = isElectron && song.type !== "radio" && settingStore.useSongUnlock;
+      const canUnlock =
+        (isElectron || isCapacitorAndroid) && song.type !== "radio" && settingStore.useSongUnlock;
 
       // 如果指定了非官方源，直接走解锁流程
       if (forceSource && forceSource !== "auto") {

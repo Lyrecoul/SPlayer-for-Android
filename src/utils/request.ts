@@ -100,6 +100,14 @@ const attachApiBaseUrl = async (
     await waitForEmbeddedApiReady();
   }
 
+  // 显式指定的相对 baseURL（如解锁接口 /api/unblock）需保留，按 API 服务 origin 解析
+  if (explicitBaseUrl) {
+    request.baseURL = ABSOLUTE_HTTP_URL_RE.test(baseURL)
+      ? new URL(explicitBaseUrl, baseURL).toString().replace(/\/$/, "")
+      : explicitBaseUrl;
+    return request;
+  }
+
   request.baseURL = baseURL;
   return request;
 };

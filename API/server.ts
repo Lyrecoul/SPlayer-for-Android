@@ -4,6 +4,7 @@ import fastifyMultipart from "@fastify/multipart";
 import NeteaseCloudMusicApi from "@neteasecloudmusicapienhanced/api";
 import { pathCase } from "change-case";
 import { createRequire } from "module";
+import { handleUnblockRoute, isUnblockPath } from "./unblock";
 
 const DEFAULT_PORT = Number(process.env["SP_API_PORT"] || process.env["VITE_SERVER_PORT"] || 1145);
 const DEFAULT_HOST = process.env["SP_API_HOST"] || "0.0.0.0";
@@ -155,6 +156,10 @@ export const createStandaloneApiServer = async () => {
           name: "NeteaseCloudMusicApi",
           url: "/api/netease",
         },
+        {
+          name: "UnblockAPI",
+          url: "/api/unblock",
+        },
       ],
     };
   });
@@ -170,6 +175,33 @@ export const createStandaloneApiServer = async () => {
   const dynamicHandler = createDynamicHandler(server);
   server.get("/api/netease/*", dynamicHandler);
   server.post("/api/netease/*", dynamicHandler);
+
+  server.get("/api/unblock", async () => {
+    return {
+      name: "UnblockAPI",
+      description: "SPlayer UnblockAPI service",
+      author: "@imsyy",
+    };
+  });
+
+  const unblockHandler = async (request: FastifyRequest, reply: FastifyReply) => {
+    const subPath = (request.params as Record<string, string>)["*"] || "";
+    if (!isUnblockPath(subPath)) {
+      return reply.status(404).send({ error: "API not found" });
+    }
+    try {
+      const result = await handleUnblockRoute(
+        subPath,
+        request.query as Record<string, string | undefined>,
+      );
+      return reply.send(result);
+    } catch (error) {
+      server.log.error({ err: error, subPath }, "Unblock request failed");
+      return reply.status(500).send({ error: "Internal Server Error" });
+    }
+  };
+
+  server.get("/api/unblock/*", unblockHandler);
 
   server.get("/api/netease/lyric/ttml", async (request: FastifyRequest, reply: FastifyReply) => {
     const id = (request.query as Record<string, string | undefined>).id;

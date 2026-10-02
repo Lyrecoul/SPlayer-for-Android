@@ -43,9 +43,10 @@
 
 <script setup lang="ts">
 import type { FormInst, FormRules, SelectOption } from "naive-ui";
-import { countryList, sentCaptcha, verifyCaptcha, loginPhone } from "@/api/login";
+import { countryList, sentCaptcha, loginPhone } from "@/api/login";
 import { numberRule, phoneRule } from "@/utils/rules";
 import { getCacheData } from "@/utils/cache";
+import { getRequestErrorMessage } from "@/utils/error";
 import { debounce } from "lodash-es";
 import { LoginType } from "@/types/main";
 
@@ -112,25 +113,39 @@ const getCountryListData = async () => {
   }
 };
 
+// 仅校验手机号字段
+const validatePhone = async (): Promise<boolean> => {
+  try {
+    await phoneFormRef.value?.validate(undefined, (rule) => rule?.key === "phone");
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 const getCaptcha = async (e: MouseEvent) => {
   e.preventDefault();
-  await phoneFormRef.value?.validate(
-    (errors) => errors,
-    (rule) => rule?.key === "phone",
-  );
+  if (!(await validatePhone())) return;
 
   captchaDisabled.value = true;
-  const result = await sentCaptcha(
-    phoneFormData.value.phone as number,
-    phoneFormData.value.country as number,
-  );
-
-  if (result?.code === 200) {
-    resumeTime();
-    window.$message.success("验证码发送成功");
-  } else {
-    captchaDisabled.value = false;
-    window.$message.error("验证码发送失败，请重试");
+  let success = false;
+  try {
+    const result = await sentCaptcha(
+      phoneFormData.value.phone as number,
+      phoneFormData.value.country as number,
+    );
+    if (result?.code === 200) {
+      success = true;
+      resumeTime();
+      window.$message.success("验证码发送成功");
+    } else {
+      window.$message.error("验证码发送失败，请重试");
+    }
+  } catch (error) {
+    console.warn("发送验证码失败:", error);
+    window.$message.error(getRequestErrorMessage(error, "验证码发送失败，请重试"));
+  } finally {
+    if (!success) captchaDisabled.value = false;
   }
 };
 
@@ -153,33 +168,33 @@ const { pause: pauseTime, resume: resumeTime } = useIntervalFn(
 
 const login = debounce(async (e: MouseEvent) => {
   e.preventDefault();
-  await phoneFormRef.value?.validate();
-
-  const captchaResult = await verifyCaptcha(
-    phoneFormData.value.phone as number,
-    phoneFormData.value.captcha as number,
-    phoneFormData.value.country as number,
-  );
-  if (!captchaResult || captchaResult.code !== 200) {
-    window.$message.error("验证码校验失败，请重试");
+  // 表单校验失败时 Naive UI 已提示，直接中断
+  try {
+    await phoneFormRef.value?.validate();
+  } catch {
     return;
   }
 
-  const loginResult = await loginPhone(
-    phoneFormData.value.phone as number,
-    phoneFormData.value.captcha as number,
-    phoneFormData.value.country as number,
-  );
-  if (!loginResult || loginResult.code !== 200) {
-    window.$message.error("登录失败，请重试");
-    return;
-  }
+  try {
+    const loginResult = await loginPhone(
+      phoneFormData.value.phone as number,
+      phoneFormData.value.captcha as number,
+      phoneFormData.value.country as number,
+    );
+    if (!loginResult || loginResult.code !== 200) {
+      window.$message.error(loginResult?.msg || loginResult?.message || "登录失败，请重试");
+      return;
+    }
 
-  if (loginResult.cookie && loginResult.cookie.includes("MUSIC_U")) {
-    loginResult.cookie = loginResult.cookie.replaceAll(" HTTPOnly", "");
-    emit("saveLogin", loginResult, "phone");
-  } else {
-    window.$message.error("登录出错，请重试");
+    if (loginResult.cookie && loginResult.cookie.includes("MUSIC_U")) {
+      loginResult.cookie = loginResult.cookie.replaceAll(" HTTPOnly", "");
+      emit("saveLogin", loginResult, "phone");
+    } else {
+      window.$message.error("登录出错，请重试");
+    }
+  } catch (error) {
+    console.warn("手机号登录失败:", error);
+    window.$message.error(getRequestErrorMessage(error, "登录失败，请检查验证码或网络后重试"));
   }
 }, 300);
 

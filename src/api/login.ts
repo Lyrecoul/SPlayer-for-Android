@@ -38,14 +38,14 @@ export const checkQr = (key: string) => {
   });
 };
 
-export const loginPhone = (phone: number, captcha: number, ctcode: number = 86) => {
+export const loginPhone = (phone: number, captcha: number, countrycode: number = 86) => {
   return request({
     url: "/login/cellphone",
     timeout: LOGIN_REQUEST_TIMEOUT,
     params: {
       phone,
       captcha,
-      ctcode,
+      countrycode,
       noCookie: true,
       timestamp: Date.now(),
     },
