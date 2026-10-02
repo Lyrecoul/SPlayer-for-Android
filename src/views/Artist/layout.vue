@@ -471,12 +471,23 @@ watch(
       }
     }
   }
-  // 窄屏幕下缩小封面、减少右侧留白，避免歌手名被截断成两个字
+  // 手机端缩小封面、减少右侧留白，并让 header 高度自适应，避免两行歌手名溢出
   @media (max-width: 768px) {
     .detail {
-      height: 180px;
+      height: auto;
+      min-height: 180px;
       .cover {
+        // 固定尺寸，替代依赖父级高度的 100%，原 180px 高时封面为 138px
+        flex: none;
+        width: 138px;
+        height: 138px;
         margin-right: 14px;
+        transition:
+          width 0.3s,
+          height 0.3s,
+          opacity 0.3s,
+          margin 0.3s,
+          transform 0.3s;
       }
       .data {
         padding-right: 12px;
@@ -497,7 +508,8 @@ watch(
           font-size: 13px;
         }
         .collapse {
-          top: 36px;
+          // 跟随歌名高度，不再使用固定偏移
+          position: static;
         }
         .meta {
           gap: 8px !important;
@@ -508,6 +520,10 @@ watch(
           }
         }
         .menu {
+          // 回到文档流，避免盖住歌名与简介
+          position: static;
+          margin-top: auto;
+          padding-top: 8px;
           .n-button {
             height: 32px;
             --n-font-size: 13px;
@@ -520,12 +536,26 @@ watch(
         }
       }
     }
+    // 歌曲列表跟随 header 高度，不再依赖固定 padding
     .router-view.artist-songs {
-      padding-top: 210px;
+      position: static;
+      width: auto;
+      height: auto;
+      padding-top: 0;
     }
     &.small {
+      .detail {
+        height: auto;
+        min-height: 120px;
+        .cover {
+          // 原收缩态 120px 高时封面为 78px
+          width: 78px;
+          height: 78px;
+        }
+      }
+      // 覆盖基础规则里收缩态的固定偏移
       .router-view.artist-songs {
-        padding-top: 150px;
+        padding-top: 0;
       }
     }
   }
